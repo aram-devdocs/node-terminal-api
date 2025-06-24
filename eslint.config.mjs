@@ -23,6 +23,7 @@ export default [
         setInterval: "readonly",
         Promise: "readonly",
         NodeJS: "readonly",
+        fetch: "readonly",
       },
     },
     plugins: {
