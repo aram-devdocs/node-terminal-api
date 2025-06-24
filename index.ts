@@ -4,6 +4,7 @@ import { WeatherApp } from "./src/apps/Weather.js";
 import { SimpleGame } from "./src/apps/SimpleGame.js";
 import { SnakeGame } from "./src/apps/SnakeGame.js";
 import { FlappyBird } from "./src/apps/FlappyBird.js";
+import { DoomArena } from "./src/apps/DoomArena.js";
 
 const apps: AppRegistration[] = [
   {
@@ -25,6 +26,11 @@ const apps: AppRegistration[] = [
     name: "Flappy Bird",
     description: "Navigate through pipes - press space to flap!",
     app: new FlappyBird(),
+  },
+  {
+    name: "Doom Arena",
+    description: "Fight waves of demons in an ASCII arena shooter!",
+    app: new DoomArena(),
   },
 ];
 
