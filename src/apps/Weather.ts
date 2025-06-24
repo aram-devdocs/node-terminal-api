@@ -21,6 +21,10 @@ export class WeatherApp implements Application {
   }
 
   async onStart(terminal: Terminal): Promise<void> {
+    terminal.display("Welcome to the Weather App!", {
+      color: "green",
+      bold: true,
+    });
     const city = await terminal.prompt("Enter city name: ");
     terminal.display(`Checking weather for ${city}...`, { color: "blue" });
     const weather = await this.checkWeather(city);

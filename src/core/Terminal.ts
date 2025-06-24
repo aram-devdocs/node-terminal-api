@@ -29,6 +29,8 @@ import type { Application, DisplayOptions } from "../types/index.js";
 export class Terminal {
   private rl: readline.Interface;
   private isRunning: boolean = false;
+  private isRawMode: boolean = false;
+  private keypressListeners: Array<(key: KeypressEvent) => void> = [];
 
   /**
    * Creates a new Terminal instance with readline interface configured.
@@ -117,6 +119,125 @@ export class Terminal {
    */
   exit(): void {
     this.isRunning = false;
+    if (this.isRawMode) {
+      this.disableRawMode();
+    }
+  }
+
+  /**
+   * Enables raw mode for interactive input without pressing enter.
+   * In raw mode, keypresses are captured immediately without buffering.
+   * Perfect for games and interactive applications.
+   *
+   * @example
+   * ```typescript
+   * terminal.enableRawMode();
+   * terminal.onKeypress((key) => {
+   *   if (key.name === 'up') moveUp();
+   *   if (key.name === 'down') moveDown();
+   *   if (key.ctrl && key.name === 'c') terminal.exit();
+   * });
+   * ```
+   */
+  enableRawMode(): void {
+    if (this.isRawMode) return;
+
+    if (process.stdin.isTTY) {
+      process.stdin.setRawMode(true);
+      process.stdin.resume();
+      process.stdin.setEncoding("utf8");
+
+      readline.emitKeypressEvents(process.stdin);
+      process.stdin.on("keypress", this.handleKeypress.bind(this));
+
+      this.isRawMode = true;
+    }
+  }
+
+  /**
+   * Disables raw mode and returns to normal line-based input.
+   */
+  disableRawMode(): void {
+    if (!this.isRawMode) return;
+
+    if (process.stdin.isTTY) {
+      process.stdin.setRawMode(false);
+      process.stdin.removeAllListeners("keypress");
+      this.isRawMode = false;
+    }
+  }
+
+  /**
+   * Registers a callback for keypress events when in raw mode.
+   *
+   * @param callback - Function to call on each keypress
+   * @returns Function to unregister the listener
+   *
+   * @example
+   * ```typescript
+   * const unsubscribe = terminal.onKeypress((key) => {
+   *   console.log('Key pressed:', key.sequence);
+   *   if (key.name === 'escape') {
+   *     unsubscribe();
+   *     terminal.exit();
+   *   }
+   * });
+   * ```
+   */
+  onKeypress(callback: (key: KeypressEvent) => void): () => void {
+    this.keypressListeners.push(callback);
+    return () => {
+      const index = this.keypressListeners.indexOf(callback);
+      if (index > -1) {
+        this.keypressListeners.splice(index, 1);
+      }
+    };
+  }
+
+  /**
+   * Waits for and returns the next keypress event.
+   * Only works when raw mode is enabled.
+   *
+   * @returns Promise that resolves with the keypress event
+   *
+   * @example
+   * ```typescript
+   * terminal.enableRawMode();
+   * const key = await terminal.readKey();
+   * if (key.name === 'y') {
+   *   console.log('User pressed Y');
+   * }
+   * ```
+   */
+  async readKey(): Promise<KeypressEvent> {
+    if (!this.isRawMode) {
+      throw new Error("Raw mode must be enabled to read individual keys");
+    }
+
+    return new Promise((resolve) => {
+      const handler = (key: KeypressEvent): void => {
+        const index = this.keypressListeners.indexOf(handler);
+        if (index > -1) {
+          this.keypressListeners.splice(index, 1);
+        }
+        resolve(key);
+      };
+      this.keypressListeners.push(handler);
+    });
+  }
+
+  private handleKeypress(str: string | undefined, key: readline.Key): void {
+    const keypressEvent: KeypressEvent = {
+      sequence: str ?? "",
+      name: key?.name ?? str ?? "",
+      ctrl: key?.ctrl ?? false,
+      meta: key?.meta ?? false,
+      shift: key?.shift ?? false,
+    };
+
+    for (const listener of this.keypressListeners) {
+      listener(keypressEvent);
+    }
   }
 
   /**
@@ -204,3 +325,11 @@ export class Terminal {
 // Re-export types for backward compatibility
 export type { Application, DisplayOptions } from "../types/index.js";
 export type { Color } from "../utils/colors.js";
+
+export interface KeypressEvent {
+  sequence: string;
+  name: string;
+  ctrl: boolean;
+  meta: boolean;
+  shift: boolean;
+}

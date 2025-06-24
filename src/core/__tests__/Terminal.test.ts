@@ -14,6 +14,20 @@ Object.defineProperty(process.stdout, "write", {
   writable: true,
 });
 
+// Mock process.stdin
+const mockStdin = {
+  setRawMode: jest.fn(),
+  resume: jest.fn(),
+  setEncoding: jest.fn(),
+  on: jest.fn(),
+  removeAllListeners: jest.fn(),
+  isTTY: true,
+};
+Object.defineProperty(process, "stdin", {
+  value: mockStdin,
+  writable: true,
+});
+
 describe("Terminal", () => {
   let terminal: Terminal;
   let mockRl: jest.Mocked<
@@ -139,6 +153,183 @@ describe("Terminal", () => {
       // We can't directly test the private isRunning property,
       // but we can test that the method exists and runs without error
       expect(() => terminal.exit()).not.toThrow();
+    });
+
+    it("should disable raw mode if enabled", () => {
+      terminal.enableRawMode();
+      terminal.exit();
+
+      expect(mockStdin.setRawMode).toHaveBeenCalledWith(false);
+    });
+  });
+
+  describe("enableRawMode", () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      // Mock emitKeypressEvents as a static method
+      jest
+        .spyOn(
+          readline as unknown as {
+            emitKeypressEvents: (stream: NodeJS.ReadStream) => void;
+          },
+          "emitKeypressEvents",
+        )
+        .mockImplementation(() => {});
+    });
+
+    it("should enable raw mode on TTY", () => {
+      terminal.enableRawMode();
+
+      expect(mockStdin.setRawMode).toHaveBeenCalledWith(true);
+      expect(mockStdin.resume).toHaveBeenCalled();
+      expect(mockStdin.setEncoding).toHaveBeenCalledWith("utf8");
+      expect(readline.emitKeypressEvents).toHaveBeenCalledWith(process.stdin);
+      expect(mockStdin.on).toHaveBeenCalledWith(
+        "keypress",
+        expect.any(Function),
+      );
+    });
+
+    it("should not enable raw mode twice", () => {
+      terminal.enableRawMode();
+      jest.clearAllMocks();
+      terminal.enableRawMode();
+
+      expect(mockStdin.setRawMode).not.toHaveBeenCalled();
+    });
+
+    it("should not enable raw mode if not TTY", () => {
+      mockStdin.isTTY = false;
+      terminal.enableRawMode();
+
+      expect(mockStdin.setRawMode).not.toHaveBeenCalled();
+      mockStdin.isTTY = true;
+    });
+  });
+
+  describe("disableRawMode", () => {
+    it("should disable raw mode", () => {
+      terminal.enableRawMode();
+      terminal.disableRawMode();
+
+      expect(mockStdin.setRawMode).toHaveBeenCalledWith(false);
+      expect(mockStdin.removeAllListeners).toHaveBeenCalledWith("keypress");
+    });
+
+    it("should not disable raw mode if not enabled", () => {
+      terminal.disableRawMode();
+
+      expect(mockStdin.setRawMode).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("onKeypress", () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      // Mock emitKeypressEvents as a static method
+      jest
+        .spyOn(
+          readline as unknown as {
+            emitKeypressEvents: (stream: NodeJS.ReadStream) => void;
+          },
+          "emitKeypressEvents",
+        )
+        .mockImplementation(() => {});
+    });
+
+    it("should register keypress listener", () => {
+      terminal.enableRawMode();
+      const callback = jest.fn();
+      terminal.onKeypress(callback);
+
+      // Simulate a keypress
+      const keypressHandler = mockStdin.on.mock.calls.find(
+        (call) => call[0] === "keypress",
+      )?.[1] as (str: string, key: readline.Key) => void;
+
+      keypressHandler("a", {
+        name: "a",
+        ctrl: false,
+        meta: false,
+        shift: false,
+      });
+
+      expect(callback).toHaveBeenCalledWith({
+        sequence: "a",
+        name: "a",
+        ctrl: false,
+        meta: false,
+        shift: false,
+      });
+    });
+
+    it("should return unsubscribe function", () => {
+      terminal.enableRawMode();
+      const callback = jest.fn();
+      const unsubscribe = terminal.onKeypress(callback);
+
+      unsubscribe();
+
+      // Simulate a keypress after unsubscribe
+      const keypressHandler = mockStdin.on.mock.calls.find(
+        (call) => call[0] === "keypress",
+      )?.[1] as (str: string, key: readline.Key) => void;
+
+      keypressHandler("a", {
+        name: "a",
+        ctrl: false,
+        meta: false,
+        shift: false,
+      });
+
+      expect(callback).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("readKey", () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      // Mock emitKeypressEvents as a static method
+      jest
+        .spyOn(
+          readline as unknown as {
+            emitKeypressEvents: (stream: NodeJS.ReadStream) => void;
+          },
+          "emitKeypressEvents",
+        )
+        .mockImplementation(() => {});
+    });
+
+    it("should throw error if raw mode is not enabled", async () => {
+      await expect(terminal.readKey()).rejects.toThrow(
+        "Raw mode must be enabled to read individual keys",
+      );
+    });
+
+    it("should return keypress event", async () => {
+      terminal.enableRawMode();
+      const readKeyPromise = terminal.readKey();
+
+      // Simulate a keypress
+      const keypressHandler = mockStdin.on.mock.calls.find(
+        (call) => call[0] === "keypress",
+      )?.[1] as (str: string, key: readline.Key) => void;
+
+      keypressHandler("b", {
+        name: "b",
+        ctrl: true,
+        meta: false,
+        shift: false,
+      });
+
+      const result = await readKeyPromise;
+      expect(result).toEqual({
+        sequence: "b",
+        name: "b",
+        ctrl: true,
+        meta: false,
+        shift: false,
+      });
     });
   });
 
