@@ -43,19 +43,19 @@ export class Terminal {
       output = `${colors[options.color] || ""}${output}${colors.reset}`;
     }
 
-    if (options.bold) {
+    if (options.bold === true) {
       output = `\x1b[1m${output}\x1b[0m`;
     }
 
     if (options.newLine !== false) {
-      console.log(output);
+      process.stdout.write(output + "\n");
     } else {
       process.stdout.write(output);
     }
   }
 
   clear(): void {
-    console.clear();
+    process.stdout.write("\x1b[2J\x1b[0f");
   }
 
   async prompt(question: string): Promise<string> {
@@ -91,18 +91,23 @@ export class Terminal {
       if (this.isRunning) {
         this.showPrompt();
 
-        this.rl.on("line", async (input) => {
+        this.rl.on("line", (input) => {
           if (!this.isRunning) return;
 
-          try {
-            await app.onInput(input.trim(), this);
-            if (this.isRunning) {
+          void (async (): Promise<void> => {
+            try {
+              await app.onInput(input.trim(), this);
+              if (this.isRunning) {
+                this.showPrompt();
+              }
+            } catch (error) {
+              this.display(
+                `Error: ${error instanceof Error ? error.message : String(error)}`,
+                { color: "red" },
+              );
               this.showPrompt();
             }
-          } catch (error) {
-            this.display(`Error: ${error}`, { color: "red" });
-            this.showPrompt();
-          }
+          })();
         });
       }
 
@@ -115,7 +120,12 @@ export class Terminal {
         }, 100);
       });
     } catch (error) {
-      this.display(`Failed to start application: ${error}`, { color: "red" });
+      this.display(
+        `Failed to start application: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        { color: "red" },
+      );
     } finally {
       await app.onExit(this);
       this.rl.close();
