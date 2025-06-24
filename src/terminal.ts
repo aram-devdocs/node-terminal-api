@@ -1,6 +1,5 @@
 /**
  * Main exports for the terminal API
- * This file maintains backward compatibility while using the new modular structure
  */
 
 export { Terminal } from "./core/Terminal.js";
