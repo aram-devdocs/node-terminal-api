@@ -1,9 +1,10 @@
 import type { Config } from "jest";
 
 const config: Config = {
-  preset: "ts-jest",
+  preset: "ts-jest/presets/default-esm",
   testEnvironment: "node",
-  roots: ["<rootDir>/src", "<rootDir>/tests"],
+  extensionsToTreatAsEsm: [".ts"],
+  roots: ["<rootDir>/src"],
   testMatch: [
     "**/__tests__/**/*.test.ts",
     "**/*.test.ts",
@@ -24,12 +25,14 @@ const config: Config = {
   },
   coverageDirectory: "coverage",
   moduleNameMapper: {
+    "^(\\.{1,2}/.*)\\.js$": "$1",
     "^@/(.*)$": "<rootDir>/src/$1",
   },
   transform: {
     "^.+\\.ts$": [
       "ts-jest",
       {
+        useESM: true,
         tsconfig: {
           esModuleInterop: true,
           allowSyntheticDefaultImports: true,

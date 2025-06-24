@@ -5,7 +5,7 @@ export class WeatherApp implements Application {
   version = "1.0.0";
 
   private cleanUp(): void {
-    process.exit(0);
+    // process.exit(0);
   }
 
   private async checkWeather(
