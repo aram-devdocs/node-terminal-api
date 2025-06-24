@@ -3,6 +3,7 @@ import { Terminal } from "./src/core/Terminal.js";
 import { WeatherApp } from "./src/apps/Weather.js";
 import { SimpleGame } from "./src/apps/SimpleGame.js";
 import { SnakeGame } from "./src/apps/SnakeGame.js";
+import { FlappyBird } from "./src/apps/FlappyBird.js";
 
 const apps: AppRegistration[] = [
   {
@@ -19,6 +20,11 @@ const apps: AppRegistration[] = [
     name: "Snake Game",
     description: "Classic snake game - eat food and grow!",
     app: new SnakeGame(),
+  },
+  {
+    name: "Flappy Bird",
+    description: "Navigate through pipes - press space to flap!",
+    app: new FlappyBird(),
   },
 ];
 
