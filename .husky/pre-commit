@@ -1,0 +1,10 @@
+#!/bin/sh
+
+# Run lint-staged (handles linting and formatting)
+npx lint-staged
+
+# Run tests
+npm test
+
+# Run build to ensure it compiles
+npm run build
