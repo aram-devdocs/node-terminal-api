@@ -5,6 +5,7 @@ import { SimpleGame } from "./src/apps/SimpleGame.js";
 import { SnakeGame } from "./src/apps/SnakeGame.js";
 import { FlappyBird } from "./src/apps/FlappyBird.js";
 import { DoomArena } from "./src/apps/DoomArena.js";
+import { PixelQuest } from "./src/apps/PixelQuest.js";
 
 const apps: AppRegistration[] = [
   {
@@ -31,6 +32,11 @@ const apps: AppRegistration[] = [
     name: "Doom Arena",
     description: "Fight waves of demons in an ASCII arena shooter!",
     app: new DoomArena(),
+  },
+  {
+    name: "Pixel Quest",
+    description: "A platformer adventure - jump and avoid enemies!",
+    app: new PixelQuest(),
   },
 ];
 
